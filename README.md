@@ -26,19 +26,19 @@ myvar = TrackingMouse_shulab(filepath);
 
 3. click the :arrow_upper_left: and  :arrow_lower_right:  corner of  behavior box bottom. It will return red points your click position.
 
-![image-20220406204649197](C:\Users\Wospx\AppData\Roaming\Typora\typora-user-images\image-20220406204649197.png)
+![image-20220406204649197](.\img\1.png)
 
-![image-20220406204710475](C:\Users\Wospx\AppData\Roaming\Typora\typora-user-images\image-20220406204710475.png)
+![image-20220406204710475](.\img\2.png)
 
-![image-20220406204833662](C:\Users\Wospx\AppData\Roaming\Typora\typora-user-images\image-20220406204833662.png)
+![image-20220406204833662](.\img\3.png)
 
 4. waiting for loading video.
 
-![image-20220406205006591](C:\Users\Wospx\AppData\Roaming\Typora\typora-user-images\image-20220406205006591.png)
+![image-20220406205006591](.\img\4.png)
 
 5. waiting for data analysis.
 
-![image-20220406204909699](C:\Users\Wospx\AppData\Roaming\Typora\typora-user-images\image-20220406204909699.png)
+![image-20220406204909699](.\img\5.png)
 
 6. after the analysis, you can use `myvar.drawpath` to draw  run path.
 
@@ -58,15 +58,15 @@ myvar.drawpath;
 
 ### myvar.drawpath
 
-![image-20220406210728686](C:\Users\Wospx\AppData\Roaming\Typora\typora-user-images\image-20220406210728686.png)
+![image-20220406210728686](.\img\6.png)
 
 ### myvar.drawheatmap
 
-![image-20220406210800191](C:\Users\Wospx\AppData\Roaming\Typora\typora-user-images\image-20220406210800191.png)
+![image-20220406210800191](.\img\7.png)
 
 ### myvar.checkvideo(arg)
 
-![image-20220406210826830](C:\Users\Wospx\AppData\Roaming\Typora\typora-user-images\image-20220406210826830.png)
+![image-20220406210826830](.\img\8.png)
 
 if `arg` is 1, it will output a `_check.avi`  for checking the process.
 
@@ -86,7 +86,7 @@ myvar.checkvideo(1); %% make a check video
 
 The radiu of your ROI. For example, if your want a 22*22cm center ROI, your need set arearadiu to 11 in `TrackingMouse_shulab.m`
 
-![image-20220406212025069](C:\Users\Wospx\AppData\Roaming\Typora\typora-user-images\image-20220406212025069.png)
+![image-20220406212025069](.\img\9.png)
 
 
 
