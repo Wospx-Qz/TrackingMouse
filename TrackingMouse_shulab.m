@@ -30,6 +30,7 @@ classdef TrackingMouse_shulab
     
     methods
         function obj = TrackingMouse_shulab(manualpath)
+			% file input
             if nargin ~= 0
                 [filepath,name,ext] = fileparts(manualpath);
                 f2 = [filepath,'\'];
@@ -42,7 +43,6 @@ classdef TrackingMouse_shulab
             obj.filename = f1;
             
             if ~exist([obj.filepath,'.mat'],'file')
-                %%
                 V = VideoReader(obj.filepath);
                 factor = 0.35/375;
                 tmp = read(V,1);
@@ -86,6 +86,7 @@ classdef TrackingMouse_shulab
                 ps = zeros(size(data,3),2);
                 ass = zeros(size(data,3),2);
                 bss = zeros(size(data,3),2);
+				% video analysis processing
                 for i = 1:size(data,3)
                     I = (255 - data2(:,:,i) - bk);
                     I = im2bw(I,graythresh(I));
@@ -108,6 +109,7 @@ classdef TrackingMouse_shulab
                     title([num2str(round(i/V.FrameRate)),' s']);
                 end
                 clear I data data2 temp
+				% save data to mat cell
                 save([obj.filepath,'.mat']);
                 close all
                 obj.centerpath = ps;
@@ -121,8 +123,8 @@ classdef TrackingMouse_shulab
                 obj.clickpointx = x;
                 obj.clickpointy = y;
                 obj.factor = factor;
-                %%
             else
+				% load from mat file
                 load([obj.filepath,'.mat']);
                 obj.centerpath = ps;
                 obj.headpath = ass;
@@ -138,11 +140,11 @@ classdef TrackingMouse_shulab
             end
             [obj.pathlength] = parametercalculate(obj);
             [obj.lengthincenter,obj.timeincenter,obj.incenterYN] = lengthinarea(obj);
+			%[] = novelobject(obj)
             
+
         end
-        
-        
-        
+       
         function [totalL] = parametercalculate(obj)
             d = obj.centerpath(2:end,:) - obj.centerpath(1:end-1,:);
             dL = sqrt(sum(d.^2,2));
@@ -158,9 +160,131 @@ classdef TrackingMouse_shulab
             ttt = length(find(l2c(1:end-1)<obj.arearadiu/100))/obj.videoinfo.FrameRate;
             tidx = l2c(1:end-1)<(obj.arearadiu/100);
         end
-        
-        
-        function [] = drawpath(obj)
+		
+		function [obj1] = novelobject(obj)
+			objr = 0.05;
+			imshow(read(obj.videoinfo,1));hold on;
+			title('Click 2 objects (from L to R)');
+			[x,y] = ginput(2);
+			x = round(x);
+			y = round(y);
+			plot(x,y,'ro','markerfacecolor',[1 0 0]);
+			pause(1)
+			close all;
+		    d = obj.centerpath(2:end,:) - obj.centerpath(1:end-1,:);
+            dL = sqrt(sum(d.^2,2));
+         	leftT = [x(1) y(1)] - [obj.clickpointx(1),obj.clickpointy(1)];
+			rightT = [x(2) y(2)] - [obj.clickpointx(1),obj.clickpointy(1)];
+			distanceToLeft = obj.centerpath - leftT;
+			distanceToRight = obj.centerpath - rightT;
+            distanceToLeft = obj.headpath - leftT;
+			distanceToRight = obj.headpath - rightT;
+			dTL = nthroot(sum(distanceToLeft.^10,2),10)*obj.factor;
+			dTR = nthroot(sum(distanceToRight.^10,2),10)*obj.factor;
+			LinL = sum(dL(dTL<objr))*obj.factor;
+			LinR = sum(dL(dTR<objr))*obj.factor;
+			TinL = length(find(dTL<objr))/obj.videoinfo.FrameRate;
+			TinR = length(find(dTR<objr))/obj.videoinfo.FrameRate;
+			Ltidx = dTL < objr;
+			Rtidx = dTR < objr;
+			obj1.leftT = leftT;
+			obj1.rightT = rightT;
+			obj1.dTL = dTL; 
+			obj1.dTR = dTR;
+			obj1.LinL=LinL;
+			obj1.LinR=LinR; 
+			obj1.TinL=TinL;
+			obj1.TinR = TinR;
+			obj1.Ltidx = Ltidx;
+			obj1.Rtidx = Rtidx;
+			obj2 = struct(obj);
+
+			f = fieldnames(obj2);
+			for i = 1:length(f)
+				obj1.(f{i}) = obj2.(f{i});
+
+			end
+		end
+		function checkvideo_NR(obj,obj2,VMS)
+            %%
+            if nargin == 2
+                VMS = 0;
+            end
+            %%
+            figure;
+            objr = 0.05;
+            h = imagesc(read(obj.videoinfo,1));hold on;
+            axis off image
+            lwsize;
+            set(gca,'position',[0 0 1 1]);
+            plot(obj2.leftT(1)+obj.clickpointx(1),obj2.leftT(2)+obj.clickpointy(1),'ro','markerfacecolor',[1 0 0]);hold on;
+            plot(obj2.rightT(1)+obj.clickpointx(1),obj2.rightT(2)+obj.clickpointy(1),'ro','markerfacecolor',[1 0 0]);hold on;
+% 			obj2.leftT = obj2.leftT - 
+%             obj2.rightT = obj2.rightT - 
+            lc = obj2.leftT + [obj.clickpointx(1),obj.clickpointy(1)];
+            rc = obj2.rightT + [obj.clickpointx(1),obj.clickpointy(1)];
+            r = 5/100/obj.factor;
+			leftedge = lc + r*[[-1 -1]; [-1 1]; [1 1 ]; [1 -1]; [-1 -1]];
+			rightedge = rc + r*[[-1 -1]; [-1 1]; [1 1 ]; [1 -1]; [-1 -1]];
+            lL = plot(leftedge(:,1),leftedge(:,2)); hold on;
+            lR = plot(rightedge(:,1),rightedge(:,2));hold on;
+            FL = cumsum((obj2.Ltidx));
+            FR = cumsum((obj2.Rtidx));
+           
+            ttL = cumsum(obj2.Ltidx)/obj.videoinfo.FrameRate;
+            ttR = cumsum(obj2.Rtidx)/obj.videoinfo.FrameRate;
+            time_tag = text(0,0,['CenterTime:',num2str(1)],...
+                'Horizontalalignment','left',...
+				'Verticalalignment','top',...
+                'fontsize',6,'color',[1 1 1],...
+				'fontname','Times New Roman');
+            d = obj.centerpath(2:end,:) - obj.centerpath(1:end-1,:);
+            dL = sqrt(sum(d.^2,2));
+            dL = [dL;dL(1)];
+            lt = cumsum(dL)*obj.factor;
+             LL = cumsum(dL.*(obj2.dTL<objr))*obj.factor;
+			LR = cumsum(dL.*(obj2.dTR<objr))*obj.factor;
+			
+            [strtag strtag1 strtag2 strtag3 strtag4 strtag5] = deal('0');
+            if VMS; makevideo([obj.filepath,'_checkvideo.avi'],obj.videoinfo.FrameRate);end
+            for i = 1:obj.numframes
+                h.CData = read(obj.videoinfo,i);
+                
+                if ismember(i,find(obj2.Ltidx))
+                    lL.Color = [1 1 1];
+                    strtag =  sprintf('%.2f',i/obj.videoinfo.FrameRate);
+                    strtag3 = sprintf('%.2f',lt(i));
+                    strtag1 = sprintf('%.2f',FL(i)/obj.videoinfo.FrameRate);
+                    strtag4 = sprintf('%.2f',LL(i));
+                else if ismember(i,find(obj2.Rtidx))
+						lR.Color = [1 1 1];
+						strtag =  sprintf('%.2f',i/obj.videoinfo.FrameRate);
+						strtag3 = sprintf('%.2f',lt(i));
+						strtag2 = sprintf('%.2f',FR(i)/obj.videoinfo.FrameRate);
+						strtag5 = sprintf('%.2f',LR(i));
+					else
+						lL.Color = [0 0 0];
+						lR.Color = [0 0 0];
+						strtag = sprintf('%.2f',i/obj.videoinfo.FrameRate);
+						strtag3 = sprintf('%.2f',lt(i));
+					end
+                end
+                time_tag.String = {
+                    ['T_{all}: ' ,strtag,' s'];
+                    ['T_{left}: ',strtag1,' s']
+                    ['T_{right}: ',strtag2,' s']
+                    ['L_{all}: ' ,strtag3,' m']
+                    ['L_{left}: ',strtag4,' m']
+                    ['L_{right}: ',strtag5,' m']
+                    };
+                drawnow;
+                if VMS; makevideo;end
+            end
+            if VMS; makevideo(0);end
+            %%
+        end
+
+        function drawpath(obj)
             figure;
             plot(obj.centerpath(:,1),obj.centerpath(:,2));hold on;
             axis equal off
@@ -171,7 +295,6 @@ classdef TrackingMouse_shulab
             title(obj.filename,'Interpreter','none')
             lwsize;
         end
-        
         
         function drawheatmap(obj)
             figure;
@@ -192,10 +315,39 @@ classdef TrackingMouse_shulab
             lwsize;
         end
         
+        function drawNheatmap(obj,N)
+           %%
+            figure;
+            %%
+            mc = max(obj.centerpath(:))
+            cr = linspace(0,mc,N);
+            [X Y] = meshgrid(cr(1:end-1));
+            X = X(:) + 0.5*cr(2);
+            Y = Y(:) + 0.5*cr(2);
+            
+            for i = 1:length(X)
+                temp = obj.centerpath - [X(i) Y(i)];
+                d = nthroot(sum(temp.^10,2),10);
+                ss(i) = length(find(d<cr(2)));
+            end
+            ig = reshape(ss,N-1,N-1);
+           
+            Ig = log2(ig+1);
+%             G = fspecial('gaussian', 7*[1 1], 1);
+%             Ig = imfilter(log2(ig+1),G,'same');
+%             Ig = interp2(Ig,3);
+            %%lat
+            imagesc(Ig);
+            colormap(parula)
+            axis off equal
+            title(obj.filename,'Interpreter','none');
+            lwsize;
+           %%
+        end
+        
         function checkvideo(obj,VMS)
             %%
             if nargin == 1
-                
                 VMS = 0;
             end
             
@@ -212,8 +364,10 @@ classdef TrackingMouse_shulab
             tr = find(obj.incenterYN);
             tt = cumsum(obj.incenterYN);
             time_tag = text(0,0,['CenterTime:',num2str(1)],...
-                'Horizontalalignment','left','Verticalalignment','top',...
-                'fontsize',6,'color',[1 1 1],'fontname','Times New Roman');
+                'Horizontalalignment','left',...
+				'Verticalalignment','top',...
+                'fontsize',6,'color',[1 1 1],...
+				'fontname','Times New Roman');
             d = obj.centerpath(2:end,:) - obj.centerpath(1:end-1,:);
             dL = sqrt(sum(d.^2,2));
             dL = [dL;dL(1)];
@@ -252,7 +406,6 @@ classdef TrackingMouse_shulab
     end
 end
 
-
 function [op,ed] = tailtip(I)
 I = imclose(I,strel('disk',15));
 STATS = regionprops(I);
@@ -276,11 +429,10 @@ op = A(1,:);
 ed = A(round(length(B{1})/2),:);
 end
 
-
-function [ ] = makevideo( videopath,fps )
-%  for 循环前用  makevideo（视频路径，帧数);每一个循环结束用  makevideo；循环结束后用 makevideo（0）；
-%
-%
+function makevideo( videopath,fps )
+%  for 循环前用  makevideo（视频路径，帧数);
+%  每一个循环结束用  makevideo；
+%  循环结束后用 makevideo（0）；
 %  example:
 %       makevideo('test.avi',20)
 %       for i = 1:10
@@ -309,7 +461,7 @@ switch nargin
 end
 end
 
-function [] = lwsize(SizeType)
+function lwsize(SizeType)
 %   1 == 小尺寸（6.67*5）    2 == 中尺寸（9*6.75）   3 == 大尺寸（13.5*9）
 if nargin == 0
     SizeType = 1;
