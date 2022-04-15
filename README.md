@@ -77,8 +77,10 @@ myvar.checkvideo(0); %% not make a check video
 myvar.checkvideo(1); %% make a check video
 
 ```
+### myvar.drawNheatmap(N)
 
-
+![imga](img/image_2022-04-14-01-16-31.png)
+split heat map
 
 ## Properties
 
