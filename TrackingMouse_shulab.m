@@ -1,8 +1,4 @@
-classdef TrackingMouse_shulab
-    %TRACKINGMOUSE_SHULAB 此处显示有关此类的摘要
-    % a tool for openfield test
-    % Tracking a mouse in behavior box
-    
+classdef TrackingMouse_OOP
     properties
         arearadiu = 10; % cm, 如果目标中心区域边长20cm，那么填写20/2 = 10cm;
         videoduration = 600; % s， 分析的视频长度，10分钟 = 600s;
@@ -19,132 +15,121 @@ classdef TrackingMouse_shulab
         background
         clickpointx
         clickpointy
-        factor
+        factor = 0.35/375;
         pathlength
         lengthincenter
         timeincenter
         incenterYN
         numframes
-        
     end
     
     methods
-        function obj = TrackingMouse_shulab(manualpath)
-			% file input
-            if nargin ~= 0
-                [filepath,name,ext] = fileparts(manualpath);
-                f2 = [filepath,'\'];
-                f1 = [name,ext];
-            else
-                [f1,f2] = uigetfile('*.*');
-            end
-            obj.filepath = [f2,f1];
-            obj.fileoutput = [obj.filepath,'\'];
-            obj.filename = f1;
-            
+        function obj = TrackingMouse_OOP(varargin)
+            obj.filepath = getfilepath(varargin);
             if ~exist([obj.filepath,'.mat'],'file')
-                V = VideoReader(obj.filepath);
-                factor = 0.35/375;
-                tmp = read(V,1);
-                imshow(tmp(:,:,1)); hold on;
-                title('click LeftUp and RightDown corner of the box');
-                [x,y] = ginput(2);
-                x = round(x);
-                y = round(y);
-                W = abs(x(1) - x(2));  % Width of your cut
-                H = abs(y(1) - y(2));  % Height of your cut
-                plot(x,y,'ro','markerfacecolor',[1 0 0]);
+                obj.filename = getfilename(obj);
+                obj.videoinfo = getvideoinfo(obj);
+                obj.numframes = getnumframes(obj);
+                [obj.clickpointx,obj.clickpointy,obj.boxcenter] = getclickpoint(obj);
+                [obj.boxwidth,obj.boxheight] = getboxsize(obj);
+                [data2,obj.background] = getvideodata(obj);
+                [obj.centerpath,obj.headpath,obj.tailpath] = getpath(obj,data2);
+                [obj.pathlength] = parametercalculate(obj);
+                [obj.lengthincenter,obj.timeincenter,obj.incenterYN] = lengthinarea(obj);
+                save([obj.filepath,'.mat'],'obj');
+            else
+                load([obj.filepath,'.mat']);
+            end
+        end
+        
+        
+        
+        function [filename] = getfilename(obj)
+            temp = strsplit(obj.filepath,'\');
+            filename = temp{end};
+        end
+        
+        function [videoinfo] = getvideoinfo(obj)
+            videoinfo = VideoReader(obj.filepath);
+        end
+        
+        function [numframes] = getnumframes(obj)
+            a = obj.videoinfo.NumFrames;
+            b = obj.videoduration * obj.videoinfo.FrameRate;
+            numframes = min([a,b]);
+        end
+        
+        function [x,y,c] = getclickpoint(obj)
+            imshow(read(obj.videoinfo,1)); hold on;
+            title('click LeftUp and RightDown corner of the box');
+            [x,y] = ginput(2);
+            x = round(x);
+            y = round(y);
+            c(1) = mean(x) - x(1);
+            c(2) = mean(y) - y(1);
+            plot(x,y,'ro','markerfacecolor',[1 0 0]);
                 pause(1);
                 close all;
-                
-                numframes = min([V.NumFrames,obj.videoduration*V.FrameRate]);
-                obj.numframes = numframes;
-                data = zeros(V.Height,V.Width,numframes,'uint8');
-                data2 = zeros(V.Height,V.Width,numframes,'uint8');
-                tic;
-                f = waitbar(0,'Loading Video...');
-                for i = 1:numframes
-                    tmp = read(V,i);
-                    data(:,:,i) = tmp(:,:,1);
-                    if i == numframes
-                        data2 = data(y(1):y(2),x(1):x(2),:); % cut the video to fit the box
-                        bk = 255 - uint8(mean(data2(:,:,1:10:end),3)); % make backgound
-                        centerP(1) = mean(x) - x(1);
-                        centerP(2) = mean(y) - y(1);
-                    end
-                    waitbar(i/numframes,f,'Loading Video...');
-                end
-                toc;
-                delete(f);
-                %%
-                h = imagesc(data2(:,:,1));hold on;
-                h2 = plot(0,0,'k.');hold on;
-                h3 = plot(1,1,'r.');hold on;
-                h4 = plot(1,1,'c.');hold off;
-                axis image off;
-                lwsize;
-                ps = zeros(size(data,3),2);
-                ass = zeros(size(data,3),2);
-                bss = zeros(size(data,3),2);
-				% video analysis processing
-                for i = 1:size(data,3)
-                    I = (255 - data2(:,:,i) - bk);
-                    I = im2bw(I,graythresh(I));
-                    I = bwareaopen(I,300);
-                    p = regionprops(I,'Centroid');
-                    h.CData = I;
-                    [ass(i,:),bss(i,:)] = tailtip(I);
-                    h3.XData = ass(i,2);
-                    h3.YData = ass(i,1);
-                    h4.XData = bss(i,2);
-                    h4.YData = bss(i,1);
-                    if length(p) == 0
-                        ps(i,:) =  ps(i-1,:);
-                    else
-                        h2.XData = p(1).Centroid(1);
-                        h2.YData = p(1).Centroid(2);
-                        ps(i,:) = p(1).Centroid;
-                    end
-                    drawnow limitrate
-                    title([num2str(round(i/V.FrameRate)),' s']);
-                end
-                clear I data data2 temp
-				% save data to mat cell
-                save([obj.filepath,'.mat']);
-                close all
-                obj.centerpath = ps;
-                obj.headpath = ass;
-                obj.tailpath = bss;
-                obj.boxwidth = W;
-                obj.boxheight = H;
-                obj.boxcenter = centerP;
-                obj.videoinfo = V;
-                obj.background = bk;
-                obj.clickpointx = x;
-                obj.clickpointy = y;
-                obj.factor = factor;
-            else
-				% load from mat file
-                load([obj.filepath,'.mat']);
-                obj.centerpath = ps;
-                obj.headpath = ass;
-                obj.tailpath = bss;
-                obj.boxwidth = W;
-                obj.boxheight = H;
-                obj.boxcenter = centerP;
-                obj.videoinfo = V;
-                obj.background = bk;
-                obj.clickpointx = x;
-                obj.clickpointy = y;
-                obj.factor = factor;
-            end
-            [obj.pathlength] = parametercalculate(obj);
-            [obj.lengthincenter,obj.timeincenter,obj.incenterYN] = lengthinarea(obj);
-			%[] = novelobject(obj)
-            
-
         end
-       
+        
+        function [w,h] = getboxsize(obj)
+            w = abs(obj.clickpointx(1) - obj.clickpointx(2));
+            h = abs(obj.clickpointy(1) - obj.clickpointy(2));
+        end
+        
+        function [data2,bk] = getvideodata(obj)
+            tic;
+            data = zeros(obj.videoinfo.Height,obj.videoinfo.Width,obj.numframes,'uint8');
+            f = waitbar(0,'Loading Video...');
+            x = obj.clickpointx;
+            y = obj.clickpointy;
+            for i = 1:obj.numframes
+                tmp = read(obj.videoinfo,i);
+                data(:,:,i) = tmp(:,:,1);
+                if i == obj.numframes
+                    data2 = data(y(1):y(2),x(1):x(2),:); % cut the videosize
+                    bk = 255 - uint8(mean(data2(:,:,1:10:end),3)); % make background
+                end
+                waitbar(i/obj.numframes,f,'Loading Video...');
+            end
+            toc;
+            delete(f);
+        end
+        
+        function [ps,hs,ts] = getpath(obj,data2)
+            h = imagesc(data2(:,:,1)); hold on;
+            h1 = plot(0,0,'k.'); hold on;
+            h2 = plot(0,0,'r.'); hold on;
+            h3 = plot(0,0,'c.'); hold on;
+            axis image off;
+            lwsize;
+            ps = zeros(obj.numframes,2);
+            hs = zeros(obj.numframes,2);
+            ts = zeros(obj.numframes,2);
+            for i = 1:obj.numframes
+                I = 255 - data2(:,:,i) - obj.background;
+                I = im2bw(I,graythresh(I));
+                I = bwareaopen(I,300);
+                p = regionprops(I,'Centroid');
+                h.CData = I;
+                [hs(i,:),ts(i,:)] = tailtip(I);
+                if length(p) == 0
+                    ps(i,:) = ps(i-1,:);
+                else
+                    ps(i,:) = p(1).Centroid;
+                end
+                h1.XData = p(1).Centroid(1);
+                h1.YData = p(1).Centroid(2);
+                h2.XData = hs(i,2);
+                h2.YData = hs(i,1);
+                h3.XData = ts(i,2);
+                h3.YData = ts(i,1);
+                drawnow limitrate
+                title([num2str(round(i/obj.videoinfo.FrameRate)),' s']);
+            end
+            close all
+        end
+        
         function [totalL] = parametercalculate(obj)
             d = obj.centerpath(2:end,:) - obj.centerpath(1:end-1,:);
             dL = sqrt(sum(d.^2,2));
@@ -160,8 +145,114 @@ classdef TrackingMouse_shulab
             ttt = length(find(l2c(1:end-1)<obj.arearadiu/100))/obj.videoinfo.FrameRate;
             tidx = l2c(1:end-1)<(obj.arearadiu/100);
         end
-		
-		function [obj1] = novelobject(obj)
+        
+        function drawpath(obj)
+            figure;
+            plot(obj.centerpath(:,1),obj.centerpath(:,2));hold on;
+            axis equal off
+            set(gca,'ydir','reverse');
+            axis([0 obj.boxwidth 0 obj.boxheight]);
+            xlabel('X');
+            ylabel('Y');
+            title(obj.filename,'Interpreter','none')
+            lwsize;
+        end
+        
+        function drawheatmap(obj)
+            figure;
+            oc = round(obj.centerpath/10);
+            ig = zeros(max(oc(:)));
+            for i = 1:length(oc)
+                ig(oc(i,2),oc(i,1)) = ig(oc(i,1),oc(i,2)) + 1;
+            end
+            G = fspecial('gaussian', 7*[1 1], 1);
+            Ig = imfilter(log2(ig+1),G,'same');
+            Ig = interp2(Ig,3);
+            %%lat
+            imagesc(Ig);
+            colormap(jet)
+            axis off equal
+            title(obj.filename,'Interpreter','none');
+            lwsize;
+        end
+        
+        function drawNheatmap(obj,N)
+            figure;
+            mc = max(obj.centerpath(:));
+            cr = linspace(0,mc,N);
+            [X,Y] = meshgrid(cr(1:end-1));
+            X = X(:) + 0.5*cr(2);
+            Y = Y(:) + 0.5*cr(2);
+            for i = 1:length(X)
+                temp = obj.centerpath - [X(i) Y(i)];
+                d = nthroot(sum(temp.^10,2),10);
+                ss(i) = length(find(d<cr(2)));
+            end
+            ig = reshape(ss,N-1,N-1);
+            Ig = log2(ig+1);
+            imagesc(Ig);
+            colormap(parula)
+            axis off equal
+            title(obj.filename,'Interpreter','none');
+            lwsize;
+        end
+        
+        function checkvideo(obj,VMS)
+            if nargin == 1
+                VMS = 0;
+            end
+            
+            figure;
+            h = imagesc(read(obj.videoinfo,1));hold on;
+            axis off image
+            lwsize;
+            set(gca,'position',[0 0 1 1]);
+            plot(obj.clickpointx,obj.clickpointy,'ro','markerfacecolor',[1 0 0]);hold on;
+            bc = obj.boxcenter+ [obj.clickpointx(1),obj.clickpointy(1)];
+            r = obj.arearadiu/100/obj.factor;
+            centeredge = [bc+[-r -r]; bc+[-r +r]; bc+[+r +r]; bc+[+r -r];bc+[-r -r]];
+            l = plot(centeredge(:,1),centeredge(:,2));
+            tr = find(obj.incenterYN);
+            tt = cumsum(obj.incenterYN);
+            time_tag = text(0,0,['CenterTime:',num2str(1)],...
+                'Horizontalalignment','left',...
+                'Verticalalignment','top',...
+                'fontsize',6,'color',[1 1 1],...
+                'fontname','Times New Roman');
+            d = obj.centerpath(2:end,:) - obj.centerpath(1:end-1,:);
+            dL = sqrt(sum(d.^2,2));
+            dL = [dL;dL(1)];
+            lt = cumsum(dL)*obj.factor;
+            [strtag strtag1 strtag2 strtag3] = deal('0');
+            if VMS; makevideo([obj.filepath,'_checkvideo.avi'],obj.videoinfo.FrameRate);end
+            for i = 1:obj.numframes
+                h.CData = read(obj.videoinfo,i);
+                
+                if ismember(i,tr)
+                    l.Color = [1 1 1];
+                    strtag = sprintf('%.2f',tt(i)/obj.videoinfo.FrameRate);
+                    strtag2 = sprintf('%.2f',i/obj.videoinfo.FrameRate);
+                    strtag3 = sprintf('%.2f',lt(tt(i)));
+                    strtag4 = sprintf('%.2f',lt(i));
+                    
+                else
+                    strtag2 = sprintf('%.2f',i/obj.videoinfo.FrameRate);
+                    strtag4 = sprintf('%.2f',lt(i));
+                    l.Color = [0 0 0];
+                end
+                time_tag.String = {
+                    ['T_{all}: ',strtag2,' s'];
+                    ['T_{center}: ',strtag,' s']
+                    ['L_{all}: ',strtag4,' m']
+                    ['L_{center}: ',strtag3,' m']
+                    };
+                drawnow;
+                if VMS; makevideo;end
+            end
+            if VMS; makevideo(0);end
+        end
+        
+        function [obj1] = novelobject(obj)
 			objr = 0.05;
 			imshow(read(obj.videoinfo,1));hold on;
 			title('Click 2 objects (from L to R)');
@@ -283,129 +374,20 @@ classdef TrackingMouse_shulab
             if VMS; makevideo(0);end
             %%
         end
-
-        function drawpath(obj)
-            figure;
-            plot(obj.centerpath(:,1),obj.centerpath(:,2));hold on;
-            axis equal off
-            set(gca,'ydir','reverse');
-            axis([0 obj.boxwidth 0 obj.boxheight]);
-            xlabel('X');
-            ylabel('Y');
-            title(obj.filename,'Interpreter','none')
-            lwsize;
-        end
-        
-        function drawheatmap(obj)
-            figure;
-            oc = round(obj.centerpath/10);
-            ig = zeros(max(oc(:)));
-            for i = 1:length(oc)
-                ig(oc(i,2),oc(i,1)) = ig(oc(i,1),oc(i,2)) + 1;
-            end
-            Ig = ig;
-            G = fspecial('gaussian', 7*[1 1], 1);
-            Ig = imfilter(log2(ig+1),G,'same');
-            Ig = interp2(Ig,3);
-            %%lat
-            imagesc(Ig);
-            colormap(jet)
-            axis off equal
-            title(obj.filename,'Interpreter','none');
-            lwsize;
-        end
-        
-        function drawNheatmap(obj,N)
-           %%
-            figure;
-            %%
-            mc = max(obj.centerpath(:))
-            cr = linspace(0,mc,N);
-            [X Y] = meshgrid(cr(1:end-1));
-            X = X(:) + 0.5*cr(2);
-            Y = Y(:) + 0.5*cr(2);
-            
-            for i = 1:length(X)
-                temp = obj.centerpath - [X(i) Y(i)];
-                d = nthroot(sum(temp.^10,2),10);
-                ss(i) = length(find(d<cr(2)));
-            end
-            ig = reshape(ss,N-1,N-1);
-           
-            Ig = log2(ig+1);
-%             G = fspecial('gaussian', 7*[1 1], 1);
-%             Ig = imfilter(log2(ig+1),G,'same');
-%             Ig = interp2(Ig,3);
-            %%lat
-            imagesc(Ig);
-            colormap(parula)
-            axis off equal
-            title(obj.filename,'Interpreter','none');
-            lwsize;
-           %%
-        end
-        
-        function checkvideo(obj,VMS)
-            %%
-            if nargin == 1
-                VMS = 0;
-            end
-            
-            figure;
-            h = imagesc(read(obj.videoinfo,1));hold on;
-            axis off image
-            lwsize;
-            set(gca,'position',[0 0 1 1]);
-            plot(obj.clickpointx,obj.clickpointy,'ro','markerfacecolor',[1 0 0]);hold on;
-            bc = obj.boxcenter+ [obj.clickpointx(1),obj.clickpointy(1)];
-            r = obj.arearadiu/100/obj.factor;
-            centeredge = [bc+[-r -r]; bc+[-r +r]; bc+[+r +r]; bc+[+r -r];bc+[-r -r]];
-            l = plot(centeredge(:,1),centeredge(:,2));
-            tr = find(obj.incenterYN);
-            tt = cumsum(obj.incenterYN);
-            time_tag = text(0,0,['CenterTime:',num2str(1)],...
-                'Horizontalalignment','left',...
-				'Verticalalignment','top',...
-                'fontsize',6,'color',[1 1 1],...
-				'fontname','Times New Roman');
-            d = obj.centerpath(2:end,:) - obj.centerpath(1:end-1,:);
-            dL = sqrt(sum(d.^2,2));
-            dL = [dL;dL(1)];
-            lt = cumsum(dL)*obj.factor;
-            [strtag strtag1 strtag2 strtag3] = deal('0');
-            if VMS; makevideo([obj.filepath,'_checkvideo.avi'],obj.videoinfo.FrameRate);end
-            for i = 1:obj.numframes
-                h.CData = read(obj.videoinfo,i);
-                
-                if ismember(i,tr)
-                    l.Color = [1 1 1];
-                    strtag = sprintf('%.2f',tt(i)/obj.videoinfo.FrameRate);
-                    strtag2 = sprintf('%.2f',i/obj.videoinfo.FrameRate);
-                    strtag3 = sprintf('%.2f',lt(tt(i)));
-                    strtag4 = sprintf('%.2f',lt(i));
-                    
-                else
-                    strtag2 = sprintf('%.2f',i/obj.videoinfo.FrameRate);
-                    strtag4 = sprintf('%.2f',lt(i));
-                    l.Color = [0 0 0];
-                end
-                time_tag.String = {
-                    ['T_{all}: ',strtag2,' s'];
-                    ['T_{center}: ',strtag,' s']
-                    ['L_{all}: ',strtag4,' m']
-                    ['L_{center}: ',strtag3,' m']
-                    };
-                drawnow;
-                if VMS; makevideo;end
-            end
-            if VMS; makevideo(0);end
-            %%
-        end
-        
         
     end
 end
 
+function [filepath] = getfilepath(varargin)
+if nargin == 2
+    [filepath,name,ext] = fileparts(varargin);
+    f2 = [filepath,'\'];
+    f1 = [name,ext];
+else
+    [f1,f2] = uigetfile('*.*');
+end
+filepath = [f2,f1];
+end
 function [op,ed] = tailtip(I)
 I = imclose(I,strel('disk',15));
 STATS = regionprops(I);
@@ -492,3 +474,4 @@ set(gcf,'Units','pixels');
 set(gca,'Units','normalized');
 set(gca,'layer','top');
 end
+
