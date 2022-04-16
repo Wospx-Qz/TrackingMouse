@@ -1,4 +1,4 @@
-classdef TrackingMouse_OOP
+classdef TrackingMouse_shulab
     properties
         arearadiu = 10; % cm, 如果目标中心区域边长20cm，那么填写20/2 = 10cm;
         videoduration = 600; % s， 分析的视频长度，10分钟 = 600s;
@@ -24,8 +24,12 @@ classdef TrackingMouse_OOP
     end
     
     methods
-        function obj = TrackingMouse_OOP(varargin)
-            obj.filepath = getfilepath(varargin);
+        function obj = TrackingMouse_shulab(fp)
+            if nargin == 0
+                obj.filepath = getfilepath;
+            else
+                obj.filepath = getfilepath(fp);
+            end
             if ~exist([obj.filepath,'.mat'],'file')
                 obj.filename = getfilename(obj);
                 obj.videoinfo = getvideoinfo(obj);
@@ -68,8 +72,8 @@ classdef TrackingMouse_OOP
             c(1) = mean(x) - x(1);
             c(2) = mean(y) - y(1);
             plot(x,y,'ro','markerfacecolor',[1 0 0]);
-                pause(1);
-                close all;
+            pause(1);
+            close all;
         end
         
         function [w,h] = getboxsize(obj)
@@ -253,50 +257,50 @@ classdef TrackingMouse_OOP
         end
         
         function [obj1] = novelobject(obj)
-			objr = 0.05;
-			imshow(read(obj.videoinfo,1));hold on;
-			title('Click 2 objects (from L to R)');
-			[x,y] = ginput(2);
-			x = round(x);
-			y = round(y);
-			plot(x,y,'ro','markerfacecolor',[1 0 0]);
-			pause(1)
-			close all;
-		    d = obj.centerpath(2:end,:) - obj.centerpath(1:end-1,:);
+            objr = 0.05;
+            imshow(read(obj.videoinfo,1));hold on;
+            title('Click 2 objects (from L to R)');
+            [x,y] = ginput(2);
+            x = round(x);
+            y = round(y);
+            plot(x,y,'ro','markerfacecolor',[1 0 0]);
+            pause(1)
+            close all;
+            d = obj.centerpath(2:end,:) - obj.centerpath(1:end-1,:);
             dL = sqrt(sum(d.^2,2));
-         	leftT = [x(1) y(1)] - [obj.clickpointx(1),obj.clickpointy(1)];
-			rightT = [x(2) y(2)] - [obj.clickpointx(1),obj.clickpointy(1)];
-			distanceToLeft = obj.centerpath - leftT;
-			distanceToRight = obj.centerpath - rightT;
+            leftT = [x(1) y(1)] - [obj.clickpointx(1),obj.clickpointy(1)];
+            rightT = [x(2) y(2)] - [obj.clickpointx(1),obj.clickpointy(1)];
+            distanceToLeft = obj.centerpath - leftT;
+            distanceToRight = obj.centerpath - rightT;
             distanceToLeft = obj.headpath - leftT;
-			distanceToRight = obj.headpath - rightT;
-			dTL = nthroot(sum(distanceToLeft.^10,2),10)*obj.factor;
-			dTR = nthroot(sum(distanceToRight.^10,2),10)*obj.factor;
-			LinL = sum(dL(dTL<objr))*obj.factor;
-			LinR = sum(dL(dTR<objr))*obj.factor;
-			TinL = length(find(dTL<objr))/obj.videoinfo.FrameRate;
-			TinR = length(find(dTR<objr))/obj.videoinfo.FrameRate;
-			Ltidx = dTL < objr;
-			Rtidx = dTR < objr;
-			obj1.leftT = leftT;
-			obj1.rightT = rightT;
-			obj1.dTL = dTL; 
-			obj1.dTR = dTR;
-			obj1.LinL=LinL;
-			obj1.LinR=LinR; 
-			obj1.TinL=TinL;
-			obj1.TinR = TinR;
-			obj1.Ltidx = Ltidx;
-			obj1.Rtidx = Rtidx;
-			obj2 = struct(obj);
-
-			f = fieldnames(obj2);
-			for i = 1:length(f)
-				obj1.(f{i}) = obj2.(f{i});
-
-			end
-		end
-		function checkvideo_NR(obj,obj2,VMS)
+            distanceToRight = obj.headpath - rightT;
+            dTL = nthroot(sum(distanceToLeft.^10,2),10)*obj.factor;
+            dTR = nthroot(sum(distanceToRight.^10,2),10)*obj.factor;
+            LinL = sum(dL(dTL<objr))*obj.factor;
+            LinR = sum(dL(dTR<objr))*obj.factor;
+            TinL = length(find(dTL<objr))/obj.videoinfo.FrameRate;
+            TinR = length(find(dTR<objr))/obj.videoinfo.FrameRate;
+            Ltidx = dTL < objr;
+            Rtidx = dTR < objr;
+            obj1.leftT = leftT;
+            obj1.rightT = rightT;
+            obj1.dTL = dTL;
+            obj1.dTR = dTR;
+            obj1.LinL=LinL;
+            obj1.LinR=LinR;
+            obj1.TinL=TinL;
+            obj1.TinR = TinR;
+            obj1.Ltidx = Ltidx;
+            obj1.Rtidx = Rtidx;
+            obj2 = struct(obj);
+            
+            f = fieldnames(obj2);
+            for i = 1:length(f)
+                obj1.(f{i}) = obj2.(f{i});
+                
+            end
+        end
+        function checkvideo_NR(obj,obj2,VMS)
             %%
             if nargin == 2
                 VMS = 0;
@@ -310,32 +314,32 @@ classdef TrackingMouse_OOP
             set(gca,'position',[0 0 1 1]);
             plot(obj2.leftT(1)+obj.clickpointx(1),obj2.leftT(2)+obj.clickpointy(1),'ro','markerfacecolor',[1 0 0]);hold on;
             plot(obj2.rightT(1)+obj.clickpointx(1),obj2.rightT(2)+obj.clickpointy(1),'ro','markerfacecolor',[1 0 0]);hold on;
-% 			obj2.leftT = obj2.leftT - 
-%             obj2.rightT = obj2.rightT - 
+            % 			obj2.leftT = obj2.leftT -
+            %             obj2.rightT = obj2.rightT -
             lc = obj2.leftT + [obj.clickpointx(1),obj.clickpointy(1)];
             rc = obj2.rightT + [obj.clickpointx(1),obj.clickpointy(1)];
             r = 5/100/obj.factor;
-			leftedge = lc + r*[[-1 -1]; [-1 1]; [1 1 ]; [1 -1]; [-1 -1]];
-			rightedge = rc + r*[[-1 -1]; [-1 1]; [1 1 ]; [1 -1]; [-1 -1]];
+            leftedge = lc + r*[[-1 -1]; [-1 1]; [1 1 ]; [1 -1]; [-1 -1]];
+            rightedge = rc + r*[[-1 -1]; [-1 1]; [1 1 ]; [1 -1]; [-1 -1]];
             lL = plot(leftedge(:,1),leftedge(:,2)); hold on;
             lR = plot(rightedge(:,1),rightedge(:,2));hold on;
             FL = cumsum((obj2.Ltidx));
             FR = cumsum((obj2.Rtidx));
-           
+            
             ttL = cumsum(obj2.Ltidx)/obj.videoinfo.FrameRate;
             ttR = cumsum(obj2.Rtidx)/obj.videoinfo.FrameRate;
             time_tag = text(0,0,['CenterTime:',num2str(1)],...
                 'Horizontalalignment','left',...
-				'Verticalalignment','top',...
+                'Verticalalignment','top',...
                 'fontsize',6,'color',[1 1 1],...
-				'fontname','Times New Roman');
+                'fontname','Times New Roman');
             d = obj.centerpath(2:end,:) - obj.centerpath(1:end-1,:);
             dL = sqrt(sum(d.^2,2));
             dL = [dL;dL(1)];
             lt = cumsum(dL)*obj.factor;
-             LL = cumsum(dL.*(obj2.dTL<objr))*obj.factor;
-			LR = cumsum(dL.*(obj2.dTR<objr))*obj.factor;
-			
+            LL = cumsum(dL.*(obj2.dTL<objr))*obj.factor;
+            LR = cumsum(dL.*(obj2.dTR<objr))*obj.factor;
+            
             [strtag strtag1 strtag2 strtag3 strtag4 strtag5] = deal('0');
             if VMS; makevideo([obj.filepath,'_checkvideo.avi'],obj.videoinfo.FrameRate);end
             for i = 1:obj.numframes
@@ -348,17 +352,17 @@ classdef TrackingMouse_OOP
                     strtag1 = sprintf('%.2f',FL(i)/obj.videoinfo.FrameRate);
                     strtag4 = sprintf('%.2f',LL(i));
                 else if ismember(i,find(obj2.Rtidx))
-						lR.Color = [1 1 1];
-						strtag =  sprintf('%.2f',i/obj.videoinfo.FrameRate);
-						strtag3 = sprintf('%.2f',lt(i));
-						strtag2 = sprintf('%.2f',FR(i)/obj.videoinfo.FrameRate);
-						strtag5 = sprintf('%.2f',LR(i));
-					else
-						lL.Color = [0 0 0];
-						lR.Color = [0 0 0];
-						strtag = sprintf('%.2f',i/obj.videoinfo.FrameRate);
-						strtag3 = sprintf('%.2f',lt(i));
-					end
+                        lR.Color = [1 1 1];
+                        strtag =  sprintf('%.2f',i/obj.videoinfo.FrameRate);
+                        strtag3 = sprintf('%.2f',lt(i));
+                        strtag2 = sprintf('%.2f',FR(i)/obj.videoinfo.FrameRate);
+                        strtag5 = sprintf('%.2f',LR(i));
+                    else
+                        lL.Color = [0 0 0];
+                        lR.Color = [0 0 0];
+                        strtag = sprintf('%.2f',i/obj.videoinfo.FrameRate);
+                        strtag3 = sprintf('%.2f',lt(i));
+                    end
                 end
                 time_tag.String = {
                     ['T_{all}: ' ,strtag,' s'];
@@ -379,15 +383,16 @@ classdef TrackingMouse_OOP
 end
 
 function [filepath] = getfilepath(varargin)
-if nargin == 2
-    [filepath,name,ext] = fileparts(varargin);
+if isempty(varargin{1})
+    [f1,f2] = uigetfile('*.*');
+else
+    [filepath,name,ext] = fileparts(varargin{1});
     f2 = [filepath,'\'];
     f1 = [name,ext];
-else
-    [f1,f2] = uigetfile('*.*');
 end
 filepath = [f2,f1];
 end
+
 function [op,ed] = tailtip(I)
 I = imclose(I,strel('disk',15));
 STATS = regionprops(I);
