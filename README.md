@@ -19,9 +19,9 @@ myvar = TrackingMouse_shulab(filepath); % select file by filepath
 ```
 3. click the :arrow_upper_left: and  :arrow_lower_right:  corner of  behavior box bottom. 
 It will return red points your click position.
-![image-20220406204649197](https://github.com/Wospx-Qz/TrackingMouse/blob/main\img\1.png)
-![image-20220406204710475](https://github.com/Wospx-Qz/TrackingMouse/blob/main/img\2.png)
-![image-20220406204833662](https://github.com/Wospx-Qz/TrackingMouse/blob/main/img\3.png)
+![image-20220406204649197](https://github.com/Wospx-Qz/TrackingMouse/blob/main/img/1.png)
+![image-20220406204710475](https://github.com/Wospx-Qz/TrackingMouse/blob/main/img/2.png)
+![image-20220406204833662](https://github.com/Wospx-Qz/TrackingMouse/blob/main/img/3.png)
 4. waiting for loading video.
 ![image-20220406205006591](https://github.com/Wospx-Qz/TrackingMouse/blob/main/img\4.png)
 5. waiting for data analysis.
